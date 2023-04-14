@@ -1,0 +1,356 @@
+---
+title: "NASAesopianeti"
+output: html_document
+date: "2023-02-01"
+---
+```{r}
+#importo le librerie
+library(readr)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(viridis)
+library(cluster)
+library(factoextra)
+library(ggrepel)
+```
+
+```{r}
+#importo il dataset
+db <- read_csv("PS.csv")
+head(db)
+```
+
+```{r}
+#elimino due colonne dal dataset
+db <-db %>% select(-c("hostname","pl_letter"))
+```
+
+```{r}
+#Composite Planets Table is to provide users with a table that is as complete as possible. This indicates the Composites Planet Table will necessarily include parameters from a variety of references for a given planet, indicating that the set of reported parameter values may not be internally or physically self-consistent.
+
+#capiamo come è stato ottenuto il dataset giallo, quello con una sola riga per pianeta
+
+#delle misurazioni ripetute è stata scelta la più accurata (o la più recente se ce ne sono di uguale accuratezza)
+
+#come riempire le parti vuote? Per esempio, calcolo del raggio a partire dalla massa
+#teniamo i pianeti senza raggio, ma con la massa
+
+# seleziono le righe senza raggio ma con la massa
+pnor <- db %>% filter(is.na(pl_rade)) %>% filter(!(is.na(pl_masse))) %>% select("pl_rade","pl_masse","pl_name")
+```
+
+```{r}
+# seleziono un pianeta su cui calcolare il raggio
+k91 <- pnor %>% filter(pl_name == "Kepler-91 b")
+```
+
+```{r}
+
+#mass-radius relation of Chen & Kipping (2017) to derive the planet radius R_p
+#R=C+M×S, where  
+#R = log10(Rp/R⊕), 
+#C= a constant term (in log10units), 
+#M= log10(Mp/M⊕), 
+#S= the slope of the power-law relation, 
+#R⊕ r presents the radius of the Earth, and 
+#M⊕ represents the mass of the Earth
+
+#log10(Rp/R⊕) =  C+M*S,
+
+#calcolo raggio del pianeta
+rhrt <- 6.371*10^6
+C <- 1.25
+Mp <- K91$pl_masse
+M <- log10(Mp)
+S <- -0.044
+Rrp <- 1.25+log10(146.2018)*(-0.044)
+R <- log10(Rrp/6.371*10^6)
+c <- 1.25
+s <- -0.044
+m <- log10(K91$pl_masse)
+R <- c + (m * s)Rp <- (10^R)
+```
+
+```{r}
+# importo il dataset con gli errori
+db <- read.csv("PS_elab_errs.csv")
+head(db)
+summary(db)
+```
+
+```{r}
+# calcoliamo la media degli errori sulla massa errpos <- na.omit(db$pl_bmasseerr1)
+#(mean(errpos))/(mean(na.omit(db$pl_bmasse)))
+# in questo caso la media non è rappresentativa, poichè sono presenti degli outliers. Procediamo utilizzando la mediana
+#(median(errpos))/(median(na.omit(db$pl_bmasse)))
+#calcolo l'intervallo degli errori su massa e raggio
+err_mass_medio <- (db$pl_bmasseerr1-db$pl_bmasseerr2)
+err_rade_medio <- (db$pl_radeerr1-db$pl_radeerr2)
+t.test(im)
+t.test(ir)
+#operiamo ora sul dataset senza errori, tuttavia teniamo conto degli errori sulle misurazioni
+```
+
+```{r}
+#importo il dataset senza errori
+dg <- read.csv("PS_elab.csv")
+```
+
+```{r}
+#quanti pianeti sono stati scoperti ogni anno?
+#farne un grafico a tortanumeroscoperti <- as.data.frame(table(PS$disc_year))
+numeroscoperti <- as.data.frame(table(dg$disc_year))
+ggplot(numeroscoperti) +
+  geom_col(aes(x=Var1, y= Freq, fill = Freq), col = "black")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))+
+  labs(title = "Numero di esopianeti scoperti per anno", hjust = 0.5)+
+  xlab("Anno")+
+  ylab("Numero pianeti scoperti") +
+  scale_fill_viridis(discrete = FALSE)
+##############################################################
+metodoscoperta <- as.data.frame(table(dg$discoverymethod))
+ggplot(metodoscoperta) +
+  geom_col(aes(x=Var1, y= Freq, fill = Freq),col = "black")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(angle = 30, vjust = 0.5, hjust=1))+
+  labs(title = "Metodo di scoperta", hjust = 0.5)+
+  xlab("Metodo")+
+  ylab("Numero esopianeti scoperti")
+################################################################
+#quante stelle hanno i sistemi?
+numerostelle <- as.data.frame(table(dg$sy_snum))
+perc_stelle <- numerostelle %>% mutate("pstelle"=Freq/sum(Freq)*100)
+ggplot(perc_stelle, aes(x="", y= Freq,fill = as.factor(Var1))) +
+  geom_bar(stat = "identity",width = 1, color="white")+
+  coord_polar("y",0,1)+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(vjust = 0.5, hjust=1))+
+  labs(title = "Numero di stelle nel sistema", hjust = 0.5)+
+  xlab("Numero di stelle")+
+  ylab("Numero di sistemi")+
+  scale_fill_viridis(discrete = TRUE, name = "Numero di stelle")
+##################################################################
+#quanti pianeti hanno i sistemi?
+numeropianeti <- as.data.frame(table(dg$sy_pnum))
+ggplot(numeropianeti) +
+  geom_col(aes(x=Var1, y= Freq),fill = "darkblue", col = "black")+
+  theme_minimal()+
+  theme(plot.title = element_text(hjust = 0.5), axis.text.x = element_text(vjust = 0.5, hjust=1))+
+  labs(title = "Numero di esopianeti nel sistema", hjust = 0.5)+
+  xlab("Numero di pianeti")+
+  ylab("Numero di sistemi")
+```
+
+```{r}
+# boxplots
+pl <- dg %>% gather(variable,values, 6:19)
+ggplot(pl)+
+ geom_boxplot(aes(x=variable,y=values), fill="lightblue") +
+ facet_wrap(~variable,ncol = 3,scales="free") +
+ theme_minimal()+
+ theme(strip.text = element_blank(), text = element_text(size=12))
+```
+
+```{r}
+# raggruppiamo i pianeti in 4 categorie
+# utilizziamo solo alcune variabili, poichè alcune sono a parole, e altre sono ininfluenti per raggruppare i pianeti simili, un esempio è la variabile dell'anno di scoperta. Anche i valori NA sono ininfluenti, l'algoritmo non riesce a misurare la loro distanza non sapendo il loro valore. Sostituire NA con la media della variabile sarebbe impreciso, poichè come detto in precedenza è presente un errore considerevole
+perclas <- na.omit (dg %>% select("pl_name", "pl_rade", "pl_bmasse", "pl_dens"))
+normalizzati <- scale(perclas[,-c(1)])
+perclas[, -c(1)] <- normalizzati
+set.seed(123)
+#comando per la riproducibilità dell'esperimento: il computer sceglie quattro valori casuali, con questo comando risceglie gli stessi valori ogni volta che facciamo riandare il codice
+gruppi <- kmeans(perclas$pl_rade, centers = 4)
+table(gruppi$cluster)
+perclas$cluster <- gruppi$cluster
+row.names(perclas) <- perclas$pl_name
+sommario <- perclas %>% group_by(cluster) %>% summarise(avg_radius = mean(pl_rade), avg_masse = mean(pl_bmasse), avg_dens = mean(pl_dens))
+sommario
+terrestri <- perclas %>% filter(cluster==1) %>% inner_join(dg, by.x= "pl_name")
+superterre = perclas %>% filter(cluster==3 ) %>% inner_join(dg, by.x= "pl_name") 
+nettuniani = perclas %>% filter(cluster==2 ) %>% inner_join(dg, by.x= "pl_name") 
+giganti_gassosi = perclas %>% filter(cluster==4 ) %>% inner_join(dg, by.x= "pl_name") 
+```
+
+```{r}
+#Comandi tecnici per vedere i gruppi. Cosa sono dim1 e dim2? mix di variabili vere per rappresentare
+
+rownames(perclas) <- perclas$pl_name
+
+p <- fviz_cluster(gruppi, perclas[,-c(1,5)], axes = c(1, 2), geom = c("point"), repel = TRUE,
+  show.clust.cent = TRUE, ellipse = TRUE, ellipse.type = "convex",
+  ellipse.level = 0.95, ellipse.alpha = 0.2, shape = NULL,
+  pointsize = 1, labelsize = 12, main = "Cluster plot",
+  xlab = NULL, ylab = NULL, outlier.color = "black",
+  outlier.shape = 19, outlier.pointsize = pointsize,
+  outlier.labelsize = labelsize, ggtheme = theme_grey())+
+  xlim(c(-0.5,2)) + ylim(0,0.5)
+p+ geom_text_repel(data = p$data, aes(x=x, y=y, label = perclas$pl_name, colour = cluster), vjust = -1, show.legend = F)
+```
+
+#--NON AFFRONTATO--
+#```{r}
+#library('corrr')
+#library(ggcorrplot)
+#perclas_normalized <- scale(perclas[,2:4])
+#corr_matrix <- cor(perclas_normalized)
+#ggcorrplot(corr_matrix, method = "circle")
+#```
+#
+#```{r}
+#data.pca <- princomp(corr_matrix)
+#summary(data.pca)
+#```
+#
+#```{r}
+#library(cluster)
+#set.seed(123)
+#sil <- silhouette(gruppi$cluster, dist(perclas), ordered = FALSE)
+#row.names(sil) <- row.names(perclas) # Needed to use label option
+#fviz_silhouette(sil, label = TRUE)
+#```
+#```{r}
+#fviz_cos2(data.pca, choice = "var", axes = 1:2)
+#fviz_pca_var(data.pca, col.var = "cos2",
+#            gradient.cols = c("black", "orange", "green"),
+#            repel = TRUE)
+#```
+#```{r}
+#perclas[which(perclas$pl_name %like% "HATS-17%"),]
+#```
+
+
+```{r}
+#alcuni grafici per controntare i gruppi
+
+boxplot(terrestri$pl_bmasse, superterre$pl_bmasse,
+main = "Confronto masse",
+xlab = "Massa pianeta/Massa Terra",
+ylim = c(-2,150),
+at = c(1,2),
+names = c("Terrestri", "Superterre"),
+las = 3,
+col = c("blue","#E5E10C"),
+border = "black",
+horizontal = TRUE,
+notch = TRUE
+)
+
+boxplot(nettuniani$pl_bmasse, giganti_gassosi$pl_bmasse,
+main = "Confronto masse",
+xlab = "Massa pianeta/Massa Terra",
+ylim = c(-2,10000), 
+at = c(1,2),
+names = c("Nettuniani", "Gassosi"),
+las = 3,
+col =c("blue","#E5E10C"),
+border = "black",
+horizontal = TRUE,
+notch = TRUE
+)
+
+
+#outliers <- boxplot.stats(giganti_gassosi$pl_bmasse)$out
+#giganti_gassosi <- giganti_gassosi %>% filter(!(giganti_gassosi$pl_bmasse %in% outliers))
+
+boxplot(nettuniani$pl_bmasse, giganti_gassosi$pl_bmasse,
+main = "Confronto masse",
+xlab = "Massa pianeta/Massa Terra",
+ylim = c(-2,3000), 
+at = c(1,2),
+names = c("Nettuniani", "Gassosi"),
+las = 3,
+col =c("blue","#E5E10C"),
+border = "black",
+horizontal = TRUE,
+notch = TRUE
+)
+
+
+#################################################
+#                  raggio                       #
+#################################################
+boxplot(terrestri$pl_rade, superterre$pl_rade,
+main = "Confronto raggi",
+xlab = "Raggio pianeta/Raggio Terra",
+ylim = c(-2,10),
+at = c(1,2),
+names = c("Terrestri", "Superterre"),
+las = 3,
+col = c("blue","#E5E10C"),
+border = "black",
+horizontal = TRUE,
+notch = TRUE
+)
+
+boxplot(nettuniani$pl_rade, giganti_gassosi$pl_rade,
+main = "Confronto raggi",
+xlab = "Raggio pianeta/Raggio Terra",
+ylim = c(0,80), 
+at = c(1,2),
+names = c("Nettuniani", "Gassosi"),
+las = 3,
+col = c("blue","#E5E10C"),
+border = "black",
+horizontal = TRUE,
+notch = TRUE
+)
+```
+
+```{r}
+#Ci concentriamo sui pianeti che hanno catturato l'attenzione degli astronomi perchè molto simili alla terra
+
+trappist <- terrestri[which(terrestri$pl_name %like% "TRAPPIST%"),c(1:4,10:20)] 
+
+valori_terra_sole <- c("Terra", 1.0, 1.0, 5.51, 365.249, 1.0167, 0.0167, 255, 215.41, 0.00914, 5780, 1.0, 1.0, 0.012, 1.0)
+
+trappist[nrow(trappist)+ 1,] <- valori_terra_sole
+
+```
+
+#--NON AFFRONTATO--
+#```{r}
+###I pianeti più simili alla terra sono i cosiddetti trappist
+#library(DescTools)
+###quanto si discostano le misurazioni del raggio dalla media?
+###E dalla mediana?
+#trappist <- terrestri[which(terrestri$pl_name %like% "TRAPPIST%"),1:4]
+##
+#summary(trappist)
+#```
+#trappist %>% 
+#  mutate("errore_massa" = pl_bmasse - median(pl_bmasse)) %>% 
+#  ggplot(aes(x = pl_name, y = errore_massa)) +
+#  geom_col(width = 0.7, aes(fill = errore_massa)) +
+#  ylab("Scarto massa") +
+#  theme_minimal() +
+#  coord_flip()+
+#  scale_fill_viridis(discrete = FALSE) 
+#
+#trappist %>% 
+#  mutate("errore_raggio" = pl_rade - median(pl_rade)) %>% 
+#  ggplot(aes(x = pl_name, y = errore_raggio)) +
+#  geom_col(width = 0.7,aes(fill = errore_raggio)) +
+#  ylab("Scarto raggio") +
+#  theme_minimal() +
+#  coord_flip()+
+#  scale_fill_viridis(discrete = FALSE) 
+#
+#```
+
+```{r}
+ggplot(trappist, aes(x=trappist$pl_name, y=trappist$pl_bmasse, size = trappist$pl_rade, color=trappist$pl_dens)) +
+    geom_point() +
+    scale_size(name="Raggio") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1))+
+    ylab("Massa") +
+    xlab(" ") +
+    scale_color_viridis(discrete=FALSE, name = "Densità") +
+    geom_point(aes(x="Terra", y=1), colour="red")
+   #aggiungiamo la terra al grafico
+
+```
+
+
