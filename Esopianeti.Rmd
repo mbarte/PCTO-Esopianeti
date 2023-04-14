@@ -157,8 +157,7 @@ ggplot(pl)+
 # raggruppiamo i pianeti in 4 categorie
 # utilizziamo solo alcune variabili, poichè alcune sono a parole, e altre sono ininfluenti per raggruppare i pianeti simili, un esempio è la variabile dell'anno di scoperta. Anche i valori NA sono ininfluenti, l'algoritmo non riesce a misurare la loro distanza non sapendo il loro valore. Sostituire NA con la media della variabile sarebbe impreciso, poichè come detto in precedenza è presente un errore considerevole
 perclas <- na.omit (dg %>% select("pl_name", "pl_rade", "pl_bmasse", "pl_dens"))
-normalizzati <- scale(perclas[,-c(1)])
-perclas[, -c(1)] <- normalizzati
+
 set.seed(123)
 #comando per la riproducibilità dell'esperimento: il computer sceglie quattro valori casuali, con questo comando risceglie gli stessi valori ogni volta che facciamo riandare il codice
 gruppi <- kmeans(perclas$pl_rade, centers = 4)
